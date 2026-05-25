@@ -155,16 +155,16 @@ describe('exportToDeepAgents', () => {
     assert.match(code, /TOOLS = \[web_search\]/);
   });
 
-  test('skills/ becomes skills=SKILLS pointing at "./skills"', () => {
+  test('skills/ becomes skills=SKILLS resolved relative to the module', () => {
     const dir = makeAgentDir({
       skills: [
         { name: 'research', description: 'Research a topic', instructions: 'Cite sources.' },
       ],
     });
     const { code } = exportToDeepAgents(dir);
-    assert.match(code, /SKILLS = \["\.\/skills"\]/);
+    assert.match(code, /from pathlib import Path/);
+    assert.match(code, /SKILLS = \[str\(Path\(__file__\)\.resolve\(\)\.parent \/ "skills"\)\]/);
     assert.match(code, /skills=SKILLS,/);
-    // The skill metadata is enumerated as a reference comment.
     assert.match(code, /#\s+- research:/);
   });
 

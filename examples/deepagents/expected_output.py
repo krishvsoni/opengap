@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from deepagents import create_deep_agent
 from langchain_core.tools import tool
+from pathlib import Path
 
 # Agent metadata
 AGENT_NAME = "research-assistant"
@@ -43,9 +44,8 @@ def web_search(query: str) -> str:
 TOOLS = [web_search]
 
 # Skills (skills/<name>/SKILL.md — DeepAgents loads these natively)
-# Pointing skills= at the directory lets DeepAgents discover every SKILL.md
-# without us having to inline the skill content into SYSTEM_PROMPT.
-SKILLS = ["./skills"]
+# Resolved relative to this file so discovery works from any working directory.
+SKILLS = [str(Path(__file__).resolve().parent / "skills")]
 
 # For reference, the skills available in this agent:
 #   - summarize: Condense the gathered sources into a faithful, cited summary
@@ -78,6 +78,8 @@ agent = create_deep_agent(
 )
 
 if __name__ == "__main__":
-    result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+    import os
+    user_input = os.environ.get("GITAGENT_PROMPT", "Hello")
+    result = agent.invoke({"messages": [{"role": "user", "content": user_input}]})
     for message in result["messages"]:
         print(message)

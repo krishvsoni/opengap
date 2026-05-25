@@ -56,6 +56,13 @@ export function exportToLangGraph(dir: string): LangGraphExport {
   const preToolUseScripts = collectPreToolUseHooks(agentDir);
   const subAgents = collectSubAgents(agentDir);
 
+  const unreferencedSkills = findUnreferencedSkills(skills, flows);
+  for (const name of unreferencedSkills) {
+    console.warn(
+      `gitagent: skill "${name}" is declared but no skillflow step references it; it will not be reachable in the compiled graph.`,
+    );
+  }
+
   const code = renderPython({
     manifest,
     systemPrompt,
@@ -64,9 +71,21 @@ export function exportToLangGraph(dir: string): LangGraphExport {
     flows,
     preToolUseScripts,
     subAgents,
+    unreferencedSkills,
   });
 
   return { code };
+}
+
+function findUnreferencedSkills(skills: ParsedSkill[], flows: Skillflow[]): string[] {
+  if (flows.length === 0) return [];
+  const referenced = new Set<string>();
+  for (const flow of flows) {
+    for (const step of flow.steps) {
+      if (step.skill) referenced.add(step.skill);
+    }
+  }
+  return skills.map(s => s.frontmatter.name).filter(name => !referenced.has(name));
 }
 
 export function exportToLangGraphString(dir: string): string {
@@ -212,10 +231,11 @@ interface RenderContext {
   flows: Skillflow[];
   preToolUseScripts: string[];
   subAgents: string[];
+  unreferencedSkills: string[];
 }
 
 function renderPython(ctx: RenderContext): string {
-  const { manifest, systemPrompt, skills, tools, flows, preToolUseScripts, subAgents } = ctx;
+  const { manifest, systemPrompt, skills, tools, flows, preToolUseScripts, subAgents, unreferencedSkills } = ctx;
 
   const lines: string[] = [];
   const recursionLimit = manifest.runtime?.max_turns ?? 25;
@@ -343,6 +363,14 @@ function renderPython(ctx: RenderContext): string {
       lines.push('    return {"messages": [response]}');
       lines.push('');
     }
+  }
+
+  if (unreferencedSkills.length > 0) {
+    lines.push('# Declared but unreferenced by any skillflow — defined above, never wired below:');
+    for (const name of unreferencedSkills) {
+      lines.push(`#   - ${escapeForComment(name)}`);
+    }
+    lines.push('');
   }
 
   // Sub-agent stubs (nested compiled StateGraphs)
@@ -474,8 +502,10 @@ function renderPython(ctx: RenderContext): string {
   lines.push('app = graph.compile()');
   lines.push('');
   lines.push('if __name__ == "__main__":');
+  lines.push('    import os');
+  lines.push('    user_input = os.environ.get("GITAGENT_PROMPT", "Hello")');
   lines.push('    result = app.invoke(');
-  lines.push('        {"messages": [HumanMessage(content="Hello")]},');
+  lines.push('        {"messages": [HumanMessage(content=user_input)]},');
   lines.push('        config={"recursion_limit": RECURSION_LIMIT},');
   lines.push('    )');
   lines.push('    for message in result["messages"]:');

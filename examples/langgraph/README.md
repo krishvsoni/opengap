@@ -23,4 +23,10 @@ pip install "langgraph>=0.2" "langchain>=0.3" "langchain-core>=0.3" langchain-an
 python examples/langgraph/expected_output.py
 ```
 
+Or let gitagent generate and run it for you (pass an initial message with `-p`, read from `GITAGENT_PROMPT`):
+
+```bash
+gapman run --dir examples/langgraph --adapter langgraph -p "Summarize the latest on RISC-V adoption"
+```
+
 The generated file leaves tool implementations as `NotImplementedError` stubs — replace them with your own logic before invoking.

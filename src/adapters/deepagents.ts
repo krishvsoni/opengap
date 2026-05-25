@@ -178,6 +178,7 @@ function renderPython(ctx: RenderContext): string {
   const { manifest, systemPrompt, skills, tools, preToolUseScripts, subAgents } = ctx;
   const lines: string[] = [];
   const model = manifest.model?.preferred ?? 'anthropic:claude-sonnet-4-5';
+  const needsPath = skills.length > 0 || subAgents.some(s => s.hasSkills);
 
   // Header
   lines.push('"""');
@@ -191,6 +192,7 @@ function renderPython(ctx: RenderContext): string {
   lines.push('');
   lines.push('from deepagents import create_deep_agent');
   lines.push('from langchain_core.tools import tool');
+  if (needsPath) lines.push('from pathlib import Path');
   lines.push('');
 
   // Agent metadata
@@ -247,9 +249,8 @@ function renderPython(ctx: RenderContext): string {
   // Skills — DeepAgents loads SKILL.md natively from directory paths
   lines.push('# Skills (skills/<name>/SKILL.md — DeepAgents loads these natively)');
   if (skills.length > 0) {
-    lines.push('# Pointing skills= at the directory lets DeepAgents discover every SKILL.md');
-    lines.push('# without us having to inline the skill content into SYSTEM_PROMPT.');
-    lines.push('SKILLS = ["./skills"]');
+    lines.push('# Resolved relative to this file so discovery works from any working directory.');
+    lines.push('SKILLS = [str(Path(__file__).resolve().parent / "skills")]');
     lines.push('');
     lines.push('# For reference, the skills available in this agent:');
     for (const skill of skills) {
@@ -271,7 +272,7 @@ function renderPython(ctx: RenderContext): string {
       lines.push(`    "system_prompt": ${pyTripleStr(sub.systemPrompt)},`);
       lines.push('    "tools": TOOLS,');
       if (sub.hasSkills) {
-        lines.push(`    "skills": [${pyStr(`./agents/${sub.name}/skills`)}],`);
+        lines.push(`    "skills": [str(Path(__file__).resolve().parent / "agents" / ${pyStr(sub.name)} / "skills")],`);
       }
       lines.push('}');
       lines.push('');
@@ -299,7 +300,9 @@ function renderPython(ctx: RenderContext): string {
 
   // CLI entry point
   lines.push('if __name__ == "__main__":');
-  lines.push('    result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})');
+  lines.push('    import os');
+  lines.push('    user_input = os.environ.get("GITAGENT_PROMPT", "Hello")');
+  lines.push('    result = agent.invoke({"messages": [{"role": "user", "content": user_input}]})');
   lines.push('    for message in result["messages"]:');
   lines.push('        print(message)');
   lines.push('');

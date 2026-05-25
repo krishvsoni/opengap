@@ -101,8 +101,10 @@ graph.add_edge("summarize", END)
 app = graph.compile()
 
 if __name__ == "__main__":
+    import os
+    user_input = os.environ.get("GITAGENT_PROMPT", "Hello")
     result = app.invoke(
-        {"messages": [HumanMessage(content="Hello")]},
+        {"messages": [HumanMessage(content=user_input)]},
         config={"recursion_limit": RECURSION_LIMIT},
     )
     for message in result["messages"]:
