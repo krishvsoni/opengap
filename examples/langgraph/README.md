@@ -13,7 +13,7 @@ A two-step research agent that demonstrates the LangGraph adapter:
 ## Regenerate
 
 ```bash
-gapman export --dir examples/langgraph --format langgraph --output examples/langgraph/expected_output.py
+opengap export --dir examples/langgraph --format langgraph --output examples/langgraph/expected_output.py
 ```
 
 ## Run the generated graph
@@ -26,7 +26,7 @@ python examples/langgraph/expected_output.py
 Or let gitagent generate and run it for you (pass an initial message with `-p`, read from `GITAGENT_PROMPT`):
 
 ```bash
-gapman run --dir examples/langgraph --adapter langgraph -p "Summarize the latest on RISC-V adoption"
+opengap run --dir examples/langgraph --adapter langgraph -p "Summarize the latest on RISC-V adoption"
 ```
 
 The generated file leaves tool implementations as `NotImplementedError` stubs — replace them with your own logic before invoking.

@@ -191,6 +191,30 @@ describe('exportToDeepAgents', () => {
     assert.match(code, /subagents=SUBAGENTS,/);
   });
 
+  test('sub-agent with its own `tools:` list gets a narrowed tools array, not the full parent TOOLS', () => {
+    const dir = makeAgentDir({
+      tools: [{ name: 'web-search' }, { name: 'send-email' }],
+      subAgents: [{ name: 'fact-checker', description: 'Verifies claims' }],
+    });
+    writeFileSync(
+      join(dir, 'agents', 'fact-checker', 'agent.yaml'),
+      `spec_version: '0.1.0'\nname: fact-checker\nversion: '0.1.0'\ndescription: 'Verifies claims'\ntools:\n  - web-search\n`,
+      'utf-8',
+    );
+    const { code } = exportToDeepAgents(dir);
+    assert.match(code, /"tools": \[web_search\],/);
+    assert.doesNotMatch(code, /"tools": TOOLS,/);
+  });
+
+  test('sub-agent without a `tools:` list inherits the full parent TOOLS', () => {
+    const dir = makeAgentDir({
+      tools: [{ name: 'web-search' }],
+      subAgents: [{ name: 'fact-checker', description: 'Verifies claims' }],
+    });
+    const { code } = exportToDeepAgents(dir);
+    assert.match(code, /"tools": TOOLS,/);
+  });
+
   test('pre_tool_use hooks are invoked from inside each generated tool function', () => {
     const dir = makeAgentDir({
       tools: [{ name: 'noop', description: 'A no-op' }],

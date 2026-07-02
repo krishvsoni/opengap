@@ -39,6 +39,7 @@ def _run_pre_tool_use_hooks(tool_name: str) -> None:
 def web_search(query: str) -> str:
     """Search the public web for a query"""
     _run_pre_tool_use_hooks("web-search")
+    # TODO: replace this stub with a real implementation of "web-search"
     raise NotImplementedError("Implement tool: web-search")
 
 TOOLS = [web_search]
@@ -63,7 +64,8 @@ Verifies factual claims against authoritative sources
 You are a pedantic fact-checker. Treat every claim as unverified until you
 locate a primary source. If a claim cannot be substantiated, say so plainly.
 """,
-    "tools": TOOLS,
+    "tools": TOOLS,  # inherits the full parent toolset (default) — add `tools: [...]` to
+    # this sub-agent's agent.yaml (agents/fact-checker/agent.yaml) to narrow it
 }
 
 SUBAGENTS = [fact_checker_subagent]

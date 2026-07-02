@@ -136,7 +136,7 @@ If your framework has a config file format, add an exporter in `commands/export.
 If your example directory commits an `expected_output.py` (or similar) snapshot, regenerate it whenever you change the adapter so it does not drift:
 
 ```bash
-gapman export --dir examples/<name> --format <name> --output examples/<name>/expected_output.py
+opengap export --dir examples/<name> --format <name> --output examples/<name>/expected_output.py
 ```
 
 ### 4. Document what's lossy

@@ -53,6 +53,7 @@ class AgentState(TypedDict):
 @tool
 def web_search(query: str) -> str:
     """Search the public web for a query"""
+    # TODO: replace this stub with a real implementation of "web-search"
     raise NotImplementedError("Implement tool: web-search")
 
 TOOLS = [web_search]

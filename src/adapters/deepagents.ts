@@ -38,6 +38,8 @@ interface SubAgentDef {
   description: string;
   systemPrompt: string;
   hasSkills: boolean;
+  /** Tool names to expose to this sub-agent, or null to inherit the full parent TOOLS list. */
+  toolNames: string[] | null;
 }
 
 export function exportToDeepAgents(dir: string): DeepAgentsExport {
@@ -48,7 +50,7 @@ export function exportToDeepAgents(dir: string): DeepAgentsExport {
   const skills = loadAllSkills(join(agentDir, 'skills'));
   const tools = collectTools(agentDir);
   const preToolUseScripts = collectPreToolUseHooks(agentDir);
-  const subAgents = collectSubAgents(agentDir);
+  const subAgents = collectSubAgents(agentDir, tools);
 
   const code = renderPython({
     manifest,
@@ -137,10 +139,11 @@ function collectPreToolUseHooks(agentDir: string): string[] {
   }
 }
 
-function collectSubAgents(agentDir: string): SubAgentDef[] {
+function collectSubAgents(agentDir: string, tools: ToolDef[]): SubAgentDef[] {
   const agentsDir = join(agentDir, 'agents');
   if (!existsSync(agentsDir)) return [];
 
+  const knownToolNames = new Set(tools.map(t => t.name));
   const out: SubAgentDef[] = [];
   const entries = readdirSync(agentsDir, { withFileTypes: true });
   for (const entry of entries) {
@@ -150,11 +153,16 @@ function collectSubAgents(agentDir: string): SubAgentDef[] {
 
     try {
       const subManifest = loadAgentManifest(subDir);
+      // A sub-agent's agent.yaml may declare its own `tools:` list to narrow
+      // which of the parent's tools it receives. Unknown names are dropped;
+      // an empty/absent list means "inherit the full parent TOOLS" (default).
+      const declared = (subManifest.tools ?? []).filter(name => knownToolNames.has(name));
       out.push({
         name: subManifest.name,
         description: subManifest.description,
         systemPrompt: buildSystemPrompt(subDir, subManifest),
         hasSkills: existsSync(join(subDir, 'skills')),
+        toolNames: declared.length > 0 ? declared : null,
       });
     } catch {
       // skip sub-agents that fail to load
@@ -199,6 +207,9 @@ function renderPython(ctx: RenderContext): string {
   lines.push('# Agent metadata');
   lines.push(`AGENT_NAME = ${pyStr(manifest.name)}`);
   lines.push(`AGENT_VERSION = ${pyStr(manifest.version)}`);
+  // create_deep_agent() resolves a string MODEL via langchain's init_chat_model,
+  // which natively understands "provider:model" strings (e.g. "anthropic:claude-sonnet-4-5").
+  // No prefix stripping is needed here — passing it straight through is correct.
   lines.push(`MODEL = ${pyStr(model)}`);
   lines.push('');
 
@@ -236,6 +247,7 @@ function renderPython(ctx: RenderContext): string {
       lines.push(`def ${fnName}(${sig}) -> str:`);
       lines.push(`    ${pyTripleStr(t.description || `Tool: ${t.name}`)}`);
       lines.push(`    _run_pre_tool_use_hooks(${pyStr(t.name)})`);
+      lines.push(`    # TODO: replace this stub with a real implementation of "${t.name}"`);
       lines.push(`    raise NotImplementedError("Implement tool: ${t.name}")`);
       lines.push('');
     }
@@ -270,7 +282,13 @@ function renderPython(ctx: RenderContext): string {
       lines.push(`    "name": ${pyStr(sub.name)},`);
       lines.push(`    "description": ${pyStr(sub.description)},`);
       lines.push(`    "system_prompt": ${pyTripleStr(sub.systemPrompt)},`);
-      lines.push('    "tools": TOOLS,');
+      if (sub.toolNames) {
+        const list = sub.toolNames.map(pyIdent).join(', ');
+        lines.push(`    "tools": [${list}],  # narrowed via agents/${sub.name}/agent.yaml's \`tools:\` list`);
+      } else {
+        lines.push('    "tools": TOOLS,  # inherits the full parent toolset (default) — add `tools: [...]` to');
+        lines.push(`    # this sub-agent's agent.yaml (agents/${sub.name}/agent.yaml) to narrow it`);
+      }
       if (sub.hasSkills) {
         lines.push(`    "skills": [str(Path(__file__).resolve().parent / "agents" / ${pyStr(sub.name)} / "skills")],`);
       }

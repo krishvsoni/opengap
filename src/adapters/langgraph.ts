@@ -305,6 +305,7 @@ function renderPython(ctx: RenderContext): string {
       lines.push('@tool');
       lines.push(`def ${fnName}(${sig}) -> str:`);
       lines.push(`    ${pyTripleStr(t.description || `Tool: ${t.name}`)}`);
+      lines.push(`    # TODO: replace this stub with a real implementation of "${t.name}"`);
       lines.push(`    raise NotImplementedError("Implement tool: ${t.name}")`);
       lines.push('');
     }
