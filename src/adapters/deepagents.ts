@@ -8,9 +8,9 @@ import { buildComplianceSection } from './shared.js';
 /**
  * Export a gitagent to a DeepAgents (LangChain) Python module.
  *
- * DeepAgents is a higher-level harness on top of LangGraph. The whole agent is
- * one `create_deep_agent(...)` call. There is no graph wiring — execution flow
- * (planning, sub-agent delegation, tool use) is decided by the model at runtime.
+ * The whole agent is one `create_deep_agent(...)` call. There is no graph
+ * wiring — execution flow (planning, sub-agent delegation, tool use) is decided
+ * by the model at runtime, so the agent directory maps across directly.
  *
  * Mapping:
  *   agent.yaml (model.preferred)              → model="..."

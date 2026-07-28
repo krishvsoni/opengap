@@ -15,7 +15,6 @@ import {
   exportToCodexString,
   exportToKiroString,
   exportToGitclawString,
-  exportToLangGraphString,
   exportToDeepAgentsString,
 } from '../adapters/index.js';
 import { exportToLyzrString } from '../adapters/lyzr.js';
@@ -29,7 +28,7 @@ interface ExportOptions {
 
 export const exportCommand = new Command('export')
   .description('Export agent to other formats')
-  .requiredOption('-f, --format <format>', 'Export format (system-prompt, claude-code, openai, crewai, openclaw, nanobot, lyzr, github, copilot, opencode, cursor, gemini, codex, kiro, gitclaw, langgraph, deepagents)')
+  .requiredOption('-f, --format <format>', 'Export format (system-prompt, claude-code, openai, crewai, openclaw, nanobot, lyzr, github, copilot, opencode, cursor, gemini, codex, kiro, gitclaw, deepagents)')
   .option('-d, --dir <dir>', 'Agent directory', '.')
   .option('-o, --output <output>', 'Output file path')
   .action(async (options: ExportOptions) => {
@@ -87,15 +86,12 @@ export const exportCommand = new Command('export')
         case 'gitclaw':
           result = exportToGitclawString(dir);
           break;
-        case 'langgraph':
-          result = exportToLangGraphString(dir);
-          break;
         case 'deepagents':
           result = exportToDeepAgentsString(dir);
           break;
         default:
           error(`Unknown format: ${options.format}`);
-          info('Supported formats: system-prompt, claude-code, openai, crewai, openclaw, nanobot, lyzr, github, copilot, opencode, cursor, gemini, codex, kiro, gitclaw, langgraph, deepagents');
+          info('Supported formats: system-prompt, claude-code, openai, crewai, openclaw, nanobot, lyzr, github, copilot, opencode, cursor, gemini, codex, kiro, gitclaw, deepagents');
           process.exit(1);
       }
 

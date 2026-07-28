@@ -9,10 +9,11 @@ A research agent with a fact-checker sub-agent, demonstrating the DeepAgents ada
 - `agents/fact-checker/` — emitted as a `SubAgent` dict in `subagents=[...]`. By default a sub-agent inherits the full parent `TOOLS` list; add a `tools:` list to the sub-agent's own `agent.yaml` to narrow it to a subset.
 - `expected_output.py` — the Python module the adapter produces
 
-DeepAgents is a higher-level harness on top of LangGraph — there is no graph
-wiring: the model decides when to plan, when to delegate to sub-agents, and
-when to call tools. If you need explicit per-step edges, use the `langgraph`
-adapter instead.
+DeepAgents is a filesystem-shaped harness — there is no graph wiring. The
+agent directory maps straight onto `create_deep_agent(...)`, and the model
+decides at runtime when to plan, when to delegate to sub-agents, and when to
+call tools. Nothing here needs a step graph, which is why this is the only
+LangChain-family adapter opengap ships.
 
 ## Regenerate
 
