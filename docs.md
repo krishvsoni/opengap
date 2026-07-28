@@ -633,8 +633,13 @@ opengap run [options]
 | `--refresh` | `false` | Force re-clone (pull latest) |
 | `--no-cache` | `false` | Clone to temp dir, delete on exit |
 | `-p, --prompt <query>` | — | Initial prompt (non-interactive for some adapters) |
+| `-c, --continue` | `false` | Continue the most recent session in the working directory (claude adapter only) |
+| `--resume <sessionId>` | — | Resume a specific session by ID (claude adapter only) |
+| `--session-id <uuid>` | — | Start with a specific session ID so it can be resumed later (claude adapter only) |
 
 Either `--repo` or `--dir` is required.
+
+**Session continuation (claude adapter).** `--continue` resumes the most recent Claude Code conversation in the working directory — combine it with `--workspace` to pick which directory's session to continue. `--resume <sessionId>` reopens an exact session, and `--session-id <uuid>` pins a new session to a known ID so scripts can resume it deterministically later. `--continue` and `--resume` are mutually exclusive. These flags are rejected for non-claude adapters rather than silently ignored.
 
 `--workspace` lets an agent definition live separately from the repository it operates on. It is honored by adapters that can safely set the spawned process working directory directly, including `claude`, `openai`, `crewai`, `openclaw`, and `nanobot`. Adapters that generate an isolated runtime workspace, such as `opencode`, `gemini`, and `gitclaw`, continue to run from that prepared workspace to avoid overwriting files such as `AGENTS.md`, `GEMINI.md`, or `agent.yaml` in the target repository.
 
@@ -673,6 +678,13 @@ opengap run -d ./my-agent -p "Review my authentication code"
 
 # Run an agent definition against a separate target workspace
 opengap run -d ./agents/reviewer --workspace ~/code/my-app -a claude -p "Review this repository"
+
+# Continue the most recent session in that workspace
+opengap run -d ./agents/reviewer --workspace ~/code/my-app -a claude -c -p "Now fix the issues you found"
+
+# Pin a session ID on first run, resume it later
+opengap run -d ./my-agent --session-id 3f9f74a6-6b7c-4a3e-9e1d-2f1f0a9b8c7d -p "Start the audit"
+opengap run -d ./my-agent --resume 3f9f74a6-6b7c-4a3e-9e1d-2f1f0a9b8c7d -p "Continue the audit"
 
 # Run a specific branch, force refresh
 opengap run -r https://github.com/user/agent -b develop --refresh

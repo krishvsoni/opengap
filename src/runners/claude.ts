@@ -12,6 +12,12 @@ import { error, info, warn } from '../utils/format.js';
 export interface ClaudeRunOptions {
   prompt?: string;
   workspace?: string;
+  /** Continue the most recent Claude Code conversation in the working directory. */
+  continue?: boolean;
+  /** Resume a specific Claude Code session by its session ID. */
+  resume?: string;
+  /** Start the conversation with a specific session ID (UUID) so it can be resumed later. */
+  sessionId?: string;
 }
 
 export function runWithClaude(agentDir: string, manifest: AgentManifest, options: ClaudeRunOptions = {}): void {
@@ -70,6 +76,31 @@ export function runWithClaude(agentDir: string, manifest: AgentManifest, options
   if (settingsFile) {
     args.push('--settings', settingsFile);
     tmpFiles.push(settingsFile);
+  }
+
+  // Session continuation — maps to Claude Code's native session flags.
+  // --continue resumes the most recent conversation in the working directory,
+  // so it pairs with --workspace: the session is looked up in runCwd.
+  if (options.continue && options.resume) {
+    error('--continue and --resume are mutually exclusive');
+    process.exitCode = 1;
+    return;
+  }
+  if (options.continue) {
+    args.push('--continue');
+    info('Continuing most recent Claude Code session in the working directory');
+  }
+  if (options.resume) {
+    args.push('--resume', options.resume);
+    info(`Resuming Claude Code session ${options.resume}`);
+  }
+  if (options.sessionId) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(options.sessionId)) {
+      error(`--session-id must be a valid UUID, got: ${options.sessionId}`);
+      process.exitCode = 1;
+      return;
+    }
+    args.push('--session-id', options.sessionId);
   }
 
   // Initial prompt (print mode)

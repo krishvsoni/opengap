@@ -27,6 +27,9 @@ interface RunOptions {
   prompt?: string;
   dir?: string;
   workspace?: string;
+  continue?: boolean;
+  resume?: string;
+  sessionId?: string;
 }
 
 export const runCommand = new Command('run')
@@ -39,6 +42,9 @@ export const runCommand = new Command('run')
   .option('-p, --prompt <query>', 'Initial prompt to send to the agent')
   .option('-d, --dir <dir>', 'Use local directory instead of git URL')
   .option('-w, --workspace <dir>', 'Working directory for the spawned agent process')
+  .option('-c, --continue', 'Continue the most recent session in the working directory (claude adapter)', false)
+  .option('--resume <sessionId>', 'Resume a specific session by ID (claude adapter)')
+  .option('--session-id <uuid>', 'Start with a specific session ID so it can be resumed later (claude adapter)')
   .action(async (options: RunOptions) => {
     let agentDir: string;
     let cleanup: (() => void) | undefined;
@@ -98,11 +104,24 @@ export const runCommand = new Command('run')
     }
     divider();
 
+    // Session flags are claude-adapter-only — warn instead of silently dropping
+    if ((options.continue || options.resume || options.sessionId) && options.adapter !== 'claude') {
+      error(`--continue / --resume / --session-id are only supported by the claude adapter (got: ${options.adapter})`);
+      if (cleanup) cleanup();
+      process.exit(1);
+    }
+
     // Run with selected adapter
     try {
       switch (options.adapter) {
         case 'claude':
-          runWithClaude(agentDir, manifest, { prompt: options.prompt, workspace: options.workspace });
+          runWithClaude(agentDir, manifest, {
+            prompt: options.prompt,
+            workspace: options.workspace,
+            continue: options.continue,
+            resume: options.resume,
+            sessionId: options.sessionId,
+          });
           break;
         case 'openai':
           runWithOpenAI(agentDir, manifest, { workspace: options.workspace });

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="banner.png" alt="gitagent banner" width="700" />
+  <img src="hero.png" alt="OpenGAP — GitAgentProtocol (Open GAP)" width="700" />
 </p>
 
 # OpenGAP | your repository becomes your agent
@@ -417,7 +417,7 @@ JSON Schemas for validation at `spec/schemas/`.
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=open-gitagent/gitagent&type=Date)](https://star-history.com/#open-gitagent/gitagent&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=open-gitagent/opengap&type=Date)](https://star-history.com/#open-gitagent/opengap&Date)
 
 ## Built with gitagent?
 
