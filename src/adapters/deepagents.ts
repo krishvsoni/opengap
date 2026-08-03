@@ -4,6 +4,7 @@ import yaml from 'js-yaml';
 import { loadAgentManifest, loadFileIfExists, type AgentManifest } from '../utils/loader.js';
 import { loadAllSkills, type ParsedSkill } from '../utils/skill-loader.js';
 import { buildComplianceSection } from './shared.js';
+import { warn } from '../utils/format.js';
 
 /**
  * Export a gitagent to a DeepAgents (LangChain) Python module.
@@ -38,7 +39,11 @@ interface SubAgentDef {
   description: string;
   systemPrompt: string;
   hasSkills: boolean;
-  /** Tool names to expose to this sub-agent, or null to inherit the full parent TOOLS list. */
+  /**
+   * Tool names to expose to this sub-agent. An array (including an empty one)
+   * means `tools:` was declared and narrows the set; null means it was absent,
+   * so the sub-agent inherits the full parent TOOLS list.
+   */
   toolNames: string[] | null;
 }
 
@@ -153,22 +158,55 @@ function collectSubAgents(agentDir: string, tools: ToolDef[]): SubAgentDef[] {
 
     try {
       const subManifest = loadAgentManifest(subDir);
-      // A sub-agent's agent.yaml may declare its own `tools:` list to narrow
-      // which of the parent's tools it receives. Unknown names are dropped;
-      // an empty/absent list means "inherit the full parent TOOLS" (default).
-      const declared = (subManifest.tools ?? []).filter(name => knownToolNames.has(name));
       out.push({
         name: subManifest.name,
         description: subManifest.description,
         systemPrompt: buildSystemPrompt(subDir, subManifest),
         hasSkills: existsSync(join(subDir, 'skills')),
-        toolNames: declared.length > 0 ? declared : null,
+        toolNames: resolveSubAgentTools(entry.name, subManifest, knownToolNames),
       });
     } catch {
       // skip sub-agents that fail to load
     }
   }
   return out;
+}
+
+/**
+ * Decide which of the parent's tools a sub-agent receives.
+ *
+ * The *presence* of `tools:` in the sub-agent's agent.yaml is the signal, not
+ * how many names survive filtering — otherwise a list of nothing but typos
+ * would silently fall back to the full parent toolset, handing the sub-agent
+ * more tools than the author asked for. Unknown names are dropped with a
+ * warning, and an explicit `tools: []` narrows to no tools at all.
+ *
+ * Returns null only when `tools:` is absent, meaning "inherit the full TOOLS".
+ */
+function resolveSubAgentTools(
+  subDirName: string,
+  subManifest: AgentManifest,
+  knownToolNames: Set<string>,
+): string[] | null {
+  const declared = subManifest.tools;
+  if (!Array.isArray(declared)) return null;
+
+  const known = declared.filter(name => knownToolNames.has(name));
+  const unknown = declared.filter(name => !knownToolNames.has(name));
+
+  if (unknown.length > 0) {
+    warn(
+      `agents/${subDirName}/agent.yaml declares tool(s) not defined in tools/: ` +
+      `${unknown.join(', ')} — dropped from this sub-agent's toolset.`,
+    );
+  }
+  if (declared.length > 0 && known.length === 0) {
+    warn(
+      `agents/${subDirName}/agent.yaml narrowed to no known tools — ` +
+      `the sub-agent is exported with "tools": [].`,
+    );
+  }
+  return known;
 }
 
 // Python code rendering

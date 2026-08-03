@@ -98,6 +98,18 @@ function makeAgentDir(opts: MakeAgentDirOpts): string {
   return dir;
 }
 
+/** Run an export while trapping the adapter's warn() output so it can be asserted on. */
+function captureLogs(fn: () => { code: string }): { code: string; logs: string[] } {
+  const logs: string[] = [];
+  const original = console.log;
+  console.log = (...args: unknown[]) => { logs.push(args.join(' ')); };
+  try {
+    return { code: fn().code, logs };
+  } finally {
+    console.log = original;
+  }
+}
+
 // exportToDeepAgents
 
 describe('exportToDeepAgents', () => {
@@ -213,6 +225,45 @@ describe('exportToDeepAgents', () => {
     });
     const { code } = exportToDeepAgents(dir);
     assert.match(code, /"tools": TOOLS,/);
+  });
+
+  test('sub-agent declaring only unknown tools narrows to [] and warns rather than inheriting TOOLS', () => {
+    const dir = makeAgentDir({
+      tools: [{ name: 'web-search' }],
+      subAgents: [{ name: 'fact-checker', description: 'Verifies claims' }],
+    });
+    writeFileSync(
+      join(dir, 'agents', 'fact-checker', 'agent.yaml'),
+      `spec_version: '0.1.0'\nname: fact-checker\nversion: '0.1.0'\ndescription: 'Verifies claims'\ntools:\n  - websearch\n`,
+      'utf-8',
+    );
+    const { code, logs } = captureLogs(() => exportToDeepAgents(dir));
+
+    // A list of nothing but typos must not silently widen to the parent toolset.
+    assert.match(code, /"tools": \[\],/);
+    assert.doesNotMatch(code, /"tools": TOOLS,/);
+    assert.ok(
+      logs.some(l => l.includes('websearch')),
+      `expected a warning naming the dropped tool, got: ${JSON.stringify(logs)}`,
+    );
+  });
+
+  test('sub-agent with an explicit empty `tools: []` gets no tools', () => {
+    const dir = makeAgentDir({
+      tools: [{ name: 'web-search' }],
+      subAgents: [{ name: 'fact-checker', description: 'Verifies claims' }],
+    });
+    writeFileSync(
+      join(dir, 'agents', 'fact-checker', 'agent.yaml'),
+      `spec_version: '0.1.0'\nname: fact-checker\nversion: '0.1.0'\ndescription: 'Verifies claims'\ntools: []\n`,
+      'utf-8',
+    );
+    const { code, logs } = captureLogs(() => exportToDeepAgents(dir));
+
+    assert.match(code, /"tools": \[\],/);
+    assert.doesNotMatch(code, /"tools": TOOLS,/);
+    // Deliberately empty is not a mistake — nothing to warn about.
+    assert.deepEqual(logs, []);
   });
 
   test('pre_tool_use hooks are invoked from inside each generated tool function', () => {
